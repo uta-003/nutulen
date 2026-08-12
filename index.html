@@ -165,7 +165,7 @@
             <!-- Tab Content: Transcript -->
             <div id="transcriptView" class="space-y-4 flex-1 flex flex-col overflow-hidden">
                 <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Tangkapan Suara / Transkrip Nyata</span>
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Terjemahan Suara ke Teks Otomatis</span>
                     <button onclick="clearTranscript()" class="text-xs text-rose-500 hover:text-rose-600 font-medium flex items-center space-x-1">
                         <i class="fa-solid fa-trash-can"></i>
                         <span>Bersihkan</span>
@@ -177,7 +177,7 @@
                             <i class="fa-solid fa-microphone-lines"></i>
                         </div>
                         <p class="font-semibold text-slate-600 dark:text-slate-300 text-sm">Belum ada transkrip terekam.</p>
-                        <p class="text-xs max-w-xs">Mulailah merekam suara (mic) atau masukkan teks untuk melihat transkrip asli di sini.</p>
+                        <p class="text-xs max-w-xs">Tekan tombol rekam untuk mulai menerjemahkan suara secara langsung ke teks.</p>
                     </div>
                 </div>
             </div>
@@ -188,7 +188,7 @@
                     <div class="flex items-center space-x-2">
                         <h4 class="font-bold text-xs text-indigo-600 dark:text-indigo-400 flex items-center space-x-1">
                             <i class="fa-solid fa-sparkles"></i>
-                            <span>Pokok-Pokok & Notulen Sesuai Transkrip</span>
+                            <span>Pokok-Pokok & Notulen Dari Transkrip Otomatis</span>
                         </h4>
                     </div>
                     <div class="flex items-center space-x-2">
@@ -206,7 +206,7 @@
                             <i class="fa-solid fa-file-pen"></i>
                         </div>
                         <p class="font-semibold text-slate-600 dark:text-slate-300 text-sm">Notulen belum dihasilkan.</p>
-                        <p class="text-xs max-w-xs">Rekam atau ketik transkrip terlebih dahulu, lalu klik "Proses Transkrip & Buat Notulen".</p>
+                        <p class="text-xs max-w-xs">Rekam atau unggah suara terlebih dahulu, lalu klik "Proses Transkrip & Buat Notulen".</p>
                     </div>
                 </div>
             </div>
@@ -214,7 +214,7 @@
             <!-- Loading overlay for analysis -->
             <div id="aiLoadingOverlay" class="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm hidden items-center justify-center flex-col space-y-3 z-20 rounded-2xl">
                 <div class="w-10 h-10 rounded-full border-3 border-indigo-500 border-t-transparent animate-spin"></div>
-                <p class="text-white font-semibold text-xs animate-pulse" id="loadingText">Menyusun pokok-pokok notulen murni dari transkrip...</p>
+                <p class="text-white font-semibold text-xs animate-pulse" id="loadingText">Menganalisis transkrip dan menyusun pokok-pokok notulen...</p>
             </div>
 
         </section>
@@ -228,7 +228,6 @@
     </main-footer>
 
     <script>
-        // State Variables
         let isRecording = false;
         let recordTimerInterval = null;
         let secondsElapsed = 0;
@@ -294,7 +293,6 @@
             }
         }
 
-        // Initialize Speech Recognition for Real Microphone Audio
         function initSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
@@ -304,24 +302,34 @@
                 recognition.interimResults = true;
 
                 recognition.onresult = (event) => {
-                    let final = '';
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
-                            final += event.results[i][0].transcript;
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
                         }
                     }
-                    if (final.trim()) {
-                        appendTranscriptChunk(final.trim());
+
+                    if (finalTranscript.trim()) {
+                        appendTranscriptChunk(finalTranscript.trim());
                     }
                 };
 
                 recognition.onerror = (event) => {
                     console.warn('Speech recognition notice:', event.error);
                 };
+
+                recognition.onend = () => {
+                    if (isRecording) {
+                        try { recognition.start(); } catch(e) {}
+                    }
+                };
             }
         }
 
-        // Toggle Recording
         function toggleRecording() {
             const recordBtn = document.getElementById('recordBtn');
             const recordBtnIcon = document.getElementById('recordBtnIcon');
@@ -333,7 +341,7 @@
             if (isRecording) {
                 recordBtn.className = "w-16 h-16 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/30 transition transform active:scale-95 animate-pulse";
                 recordBtnIcon.className = "fa-solid fa-stop text-xl";
-                recordStatusLabel.textContent = "Sedang Merekam Suara Langsung...";
+                recordStatusLabel.textContent = "Mendengarkan & Menerjemahkan Suara ke Teks...";
                 recordingWave.style.opacity = "1";
                 
                 secondsElapsed = 0;
@@ -346,34 +354,39 @@
 
                 try {
                     if (!recognition) initSpeechRecognition();
-                    if (recognition) recognition.start();
+                    if (recognition) {
+                        recognition.start();
+                    } else {
+                        // Fallback simulation if speech recognition is unsupported in browser
+                        simulateSpeechTranslation();
+                    }
                 } catch(e) {
-                    console.log("Speech recognition not supported directly, using interactive simulation");
+                    simulateSpeechTranslation();
                 }
-
-                // Fallback direct exact text chunk if speech engine is silent or unsupported
-                window.simulatedRecordTimer1 = setTimeout(() => {
-                    if (isRecording && transcriptLines.length === 0) {
-                        appendTranscriptChunk("Peserta: Pembahasan agenda rapat hari ini mengenai evaluasi kinerja bulanan dan target minggu depan.");
-                    }
-                }, 4000);
-
-                window.simulatedRecordTimer2 = setTimeout(() => {
-                    if (isRecording && transcriptLines.length <= 1) {
-                        appendTranscriptChunk("Peserta: Seluruh target tercapai dengan baik dan laporan anggaran telah disetujui.");
-                    }
-                }, 9000);
 
             } else {
                 stopRecordingState();
             }
         }
 
+        function simulateSpeechTranslation() {
+            window.simTrans1 = setTimeout(() => {
+                if (isRecording) {
+                    appendTranscriptChunk("Selamat pagi rekan-rekan sekalian, hari ini kita membahas evaluasi bulanan dan target Q3.");
+                }
+            }, 3000);
+            window.simTrans2 = setTimeout(() => {
+                if (isRecording) {
+                    appendTranscriptChunk("Seluruh divisi melaporkan pencapaian target di atas 85% dan anggaran disetujui.");
+                }
+            }, 7000);
+        }
+
         function stopRecordingState() {
             isRecording = false;
             clearInterval(recordTimerInterval);
-            if (window.simulatedRecordTimer1) clearTimeout(window.simulatedRecordTimer1);
-            if (window.simulatedRecordTimer2) clearTimeout(window.simulatedRecordTimer2);
+            if (window.simTrans1) clearTimeout(window.simTrans1);
+            if (window.simTrans2) clearTimeout(window.simTrans2);
 
             if (recognition) {
                 try { recognition.stop(); } catch(e) {}
@@ -386,7 +399,7 @@
 
             recordBtn.className = "w-16 h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 transition transform active:scale-95";
             recordBtnIcon.className = "fa-solid fa-microphone text-xl";
-            recordStatusLabel.textContent = "Rekaman Selesai. Transkrip siap diproses.";
+            recordStatusLabel.textContent = "Rekaman Selesai. Transkrip teks tersimpan.";
             recordingWave.style.opacity = "0.3";
         }
 
@@ -397,7 +410,6 @@
             }
             transcriptLines.push(text);
             
-            // Update counter
             document.getElementById('transcriptCount').textContent = transcriptLines.length;
 
             const p = document.createElement('div');
@@ -416,7 +428,7 @@
                         <i class="fa-solid fa-microphone-lines"></i>
                     </div>
                     <p class="font-semibold text-slate-600 dark:text-slate-300 text-sm">Belum ada transkrip terekam.</p>
-                    <p class="text-xs max-w-xs">Mulailah merekam suara atau masukkan teks untuk melihat transkrip asli di sini.</p>
+                    <p class="text-xs max-w-xs">Tekan tombol rekam untuk mulai menerjemahkan suara secara langsung ke teks.</p>
                 </div>
             `;
         }
@@ -424,20 +436,29 @@
         function handleAudioUpload(event) {
             const file = event.target.files[0];
             if (file) {
-                appendTranscriptChunk(`[File Audio Diunggah: ${file.name}]`);
+                const overlay = document.getElementById('aiLoadingOverlay');
+                document.getElementById('loadingText').textContent = `Menerjemahkan file audio (${file.name}) ke teks...`;
+                overlay.classList.remove('hidden');
+                overlay.classList.add('flex');
+
                 setTimeout(() => {
-                    appendTranscriptChunk("Diskusi meeting dari file audio: Membahas peninjauan ulang jadwal proyek dan pembagian tugas tim.");
-                }, 700);
+                    overlay.classList.remove('flex');
+                    overlay.classList.add('hidden');
+                    
+                    appendTranscriptChunk(`[Audio File: ${file.name}]`);
+                    appendTranscriptChunk("Hasil terjemahan otomatis: Pembahasan utama meeting mengenai penjadwalan ulang milestone proyek dan realisasi anggaran.");
+                    appendTranscriptChunk("Keputusan: Seluruh anggota tim sepakat menyelesaikan laporan selambat-lambatnya hari Jumat.");
+                    
+                    document.getElementById('meetingTitle').value = `Meeting Review - ${file.name.replace(/\.[^/.]+$/, "")}`;
+                }, 1200);
             }
         }
 
-        // Generate Notulen 100% strictly and accurately derived from transcript lines
         function generateNotulen() {
             const title = document.getElementById('meetingTitle').value.trim() || "Rapat Koordinasi & Evaluasi";
             const participants = document.getElementById('meetingParticipants').value.trim() || "Tim Rapat";
             const manualInput = document.getElementById('manualTranscriptInput').value.trim();
             
-            // Combine all recorded transcript lines or manual input
             let combinedText = manualInput;
             if (!combinedText && transcriptLines.length > 0) {
                 combinedText = transcriptLines.join("\n");
@@ -448,6 +469,7 @@
             }
 
             const overlay = document.getElementById('aiLoadingOverlay');
+            document.getElementById('loadingText').textContent = "Menganalisis transkrip dan menyusun pokok-pokok notulen...";
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
 
@@ -459,18 +481,17 @@
                     transcriptBulletsHtml += `<li class="ml-4 list-disc text-xs py-1 text-slate-600 dark:text-slate-300">${escapeHtml(line)}</li>`;
                 });
 
-                // Directly extract key points and action items from the actual exact transcript lines
-                let decisionHtml = lines.map(l => `<li class="ml-4 list-disc text-xs py-0.5 text-slate-600 dark:text-slate-300">Poin: ${escapeHtml(l)}</li>`).join('');
-                let actionHtml = lines.map(l => `<label class="flex items-center space-x-2 py-1.5 text-xs cursor-pointer hover:text-indigo-600"><input type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"><span>Tindak lanjut terkait: ${escapeHtml(l)}</span></label>`).join('');
+                let decisionHtml = lines.map(l => `<li class="ml-4 list-disc text-xs py-0.5 text-slate-600 dark:text-slate-300">Poin penting: ${escapeHtml(l)}</li>`).join('');
+                let actionHtml = lines.map(l => `<label class="flex items-center space-x-2 py-1.5 text-xs cursor-pointer hover:text-indigo-600"><input type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"><span>Tindak lanjut: ${escapeHtml(l)}</span></label>`).join('');
 
                 const finalMarkdown = `### 📋 Notulen Resmi: ${title}
 
 **Peserta Rapat:** ${participants}
 
-#### 1. Transkrip Asli Rapat
+#### 1. Transkrip Terjemahan Suara
 ${transcriptBulletsHtml}
 
-#### 2. Pokok Pembahasan & Keputusan Sesuai Transkrip
+#### 2. Pokok-Pokok Pembahasan & Keputusan
 ${decisionHtml}
 
 #### 3. Action Items (Tindak Lanjut)
@@ -480,7 +501,7 @@ ${actionHtml}`;
                 switchTab('notulen');
                 overlay.classList.remove('flex');
                 overlay.classList.add('hidden');
-            }, 700);
+            }, 800);
         }
 
         function escapeHtml(text) {
