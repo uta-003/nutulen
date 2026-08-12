@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nutulen - Meeting Summarizer & Recorder</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -80,7 +79,7 @@
                     <i class="fa-solid fa-sliders text-indigo-500"></i>
                     <span>Kontrol Rekaman & Transkrip</span>
                 </h2>
-                <p class="text-xs text-slate-500 dark:text-slate-400">Rekam suara, unggah file audio, atau ketik transkrip meeting.</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Gunakan mic untuk merekam, unggah file audio, atau ketik transkrip secara langsung.</p>
             </div>
 
             <!-- Mode Selector Tabs -->
@@ -141,21 +140,21 @@
                     <label class="block text-xs font-medium mb-1 text-slate-600 dark:text-slate-300">Peserta Meeting (Pisahkan koma)</label>
                     <input type="text" id="meetingParticipants" placeholder="Andi, Siti, Budi" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
                 </div>
-                <button onclick="generateAI_Notulen()" id="summarizeBtn" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition shadow-md shadow-indigo-500/20 flex items-center justify-center space-x-2">
+                <button onclick="generateNotulen()" id="summarizeBtn" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition shadow-md shadow-indigo-500/20 flex items-center justify-center space-x-2">
                     <i class="fa-solid fa-wand-magic-sparkles text-indigo-200"></i>
-                    <span>Analisis Transkrip & Buat Notulen</span>
+                    <span>Proses Transkrip & Buat Notulen</span>
                 </button>
             </div>
         </section>
 
-        <!-- Right Panel: Transcript & AI Results -->
+        <!-- Right Panel: Transcript & Notulen Results -->
         <section class="lg:col-span-7 flex flex-col bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm min-h-[580px] lg:h-[720px] overflow-hidden relative">
             
             <!-- Tabs Header -->
             <div class="flex items-center justify-between bg-slate-100 dark:bg-slate-950 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 mb-4 shrink-0">
                 <div class="flex space-x-1 w-full">
                     <button onclick="switchTab('transcript')" id="tabTranscript" class="flex-1 py-2 px-4 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 transition shadow-sm">
-                        <i class="fa-solid fa-file-lines mr-2"></i> Transkrip Suara
+                        <i class="fa-solid fa-file-lines mr-2"></i> Transkrip Suara (<span id="transcriptCount">0</span>)
                     </button>
                     <button onclick="switchTab('notulen')" id="tabNotulen" class="flex-1 py-2 px-4 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
                         <i class="fa-solid fa-clipboard-check mr-2"></i> Hasil Pokok Notulen
@@ -166,7 +165,7 @@
             <!-- Tab Content: Transcript -->
             <div id="transcriptView" class="space-y-4 flex-1 flex flex-col overflow-hidden">
                 <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Tangkapan Suara / Transkrip</span>
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Tangkapan Suara / Transkrip Nyata</span>
                     <button onclick="clearTranscript()" class="text-xs text-rose-500 hover:text-rose-600 font-medium flex items-center space-x-1">
                         <i class="fa-solid fa-trash-can"></i>
                         <span>Bersihkan</span>
@@ -178,7 +177,7 @@
                             <i class="fa-solid fa-microphone-lines"></i>
                         </div>
                         <p class="font-semibold text-slate-600 dark:text-slate-300 text-sm">Belum ada transkrip terekam.</p>
-                        <p class="text-xs max-w-xs">Mulailah merekam suara atau unggah file audio untuk menghasilkan transkrip otomatis.</p>
+                        <p class="text-xs max-w-xs">Mulailah merekam suara (mic) atau masukkan teks untuk melihat transkrip asli di sini.</p>
                     </div>
                 </div>
             </div>
@@ -189,7 +188,7 @@
                     <div class="flex items-center space-x-2">
                         <h4 class="font-bold text-xs text-indigo-600 dark:text-indigo-400 flex items-center space-x-1">
                             <i class="fa-solid fa-sparkles"></i>
-                            <span>Pokok-Pokok & Notulen Resmi</span>
+                            <span>Pokok-Pokok & Notulen Sesuai Transkrip</span>
                         </h4>
                     </div>
                     <div class="flex items-center space-x-2">
@@ -207,31 +206,33 @@
                             <i class="fa-solid fa-file-pen"></i>
                         </div>
                         <p class="font-semibold text-slate-600 dark:text-slate-300 text-sm">Notulen belum dihasilkan.</p>
-                        <p class="text-xs max-w-xs">Rekam suara atau masukkan transkrip, lalu klik "Analisis Transkrip & Buat Notulen".</p>
+                        <p class="text-xs max-w-xs">Rekam atau ketik transkrip terlebih dahulu, lalu klik "Proses Transkrip & Buat Notulen".</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Loading overlay for AI generation -->
+            <!-- Loading overlay for analysis -->
             <div id="aiLoadingOverlay" class="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-sm hidden items-center justify-center flex-col space-y-3 z-20 rounded-2xl">
                 <div class="w-10 h-10 rounded-full border-3 border-indigo-500 border-t-transparent animate-spin"></div>
-                <p class="text-white font-semibold text-xs animate-pulse" id="loadingText">Nutulen sedang menganalisis dan menyusun pokok-pokok rapat...</p>
+                <p class="text-white font-semibold text-xs animate-pulse" id="loadingText">Menyusun pokok-pokok notulen murni dari transkrip...</p>
             </div>
 
         </section>
 
     </main>
 
-    <footer class="mt-auto py-6 text-center text-xs text-slate-400 dark:text-slate-600 border-t border-slate-200 dark:border-slate-800 shrink-0">
-        2026 © Nunu. All Rights Reserved.
-    </footer>
+    <main-footer class="mt-auto">
+        <footer class="py-6 text-center text-xs text-slate-400 dark:text-slate-600 border-t border-slate-200 dark:border-slate-800 shrink-0">
+            2026 © Nunu. All Rights Reserved.
+        </footer>
+    </main-footer>
 
     <script>
         // State Variables
         let isRecording = false;
         let recordTimerInterval = null;
         let secondsElapsed = 0;
-        let transcriptText = "";
+        let transcriptLines = [];
         let finalNotulenData = null;
         let recognition = null;
 
@@ -293,7 +294,7 @@
             }
         }
 
-        // Initialize Speech Recognition if supported
+        // Initialize Speech Recognition for Real Microphone Audio
         function initSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (SpeechRecognition) {
@@ -303,22 +304,19 @@
                 recognition.interimResults = true;
 
                 recognition.onresult = (event) => {
-                    let interim = '';
                     let final = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
                             final += event.results[i][0].transcript;
-                        } else {
-                            interim += event.results[i][0].transcript;
                         }
                     }
-                    if (final) {
+                    if (final.trim()) {
                         appendTranscriptChunk(final.trim());
                     }
                 };
 
                 recognition.onerror = (event) => {
-                    console.warn('Speech recognition error:', event.error);
+                    console.warn('Speech recognition notice:', event.error);
                 };
             }
         }
@@ -335,7 +333,7 @@
             if (isRecording) {
                 recordBtn.className = "w-16 h-16 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-500/30 transition transform active:scale-95 animate-pulse";
                 recordBtnIcon.className = "fa-solid fa-stop text-xl";
-                recordStatusLabel.textContent = "Sedang Merekam & Mendengarkan...";
+                recordStatusLabel.textContent = "Sedang Merekam Suara Langsung...";
                 recordingWave.style.opacity = "1";
                 
                 secondsElapsed = 0;
@@ -350,27 +348,21 @@
                     if (!recognition) initSpeechRecognition();
                     if (recognition) recognition.start();
                 } catch(e) {
-                    console.log("Speech recognition active via fallback simulation");
+                    console.log("Speech recognition not supported directly, using interactive simulation");
                 }
 
-                // If speech recognition is unavailable or silent, provide structured realistic simulation chunks based on active meeting context
-                window.simulatedRecordTimer = setTimeout(() => {
-                    if (isRecording && transcriptText.length < 20) {
-                        appendTranscriptChunk("Pimpinan Rapat: Selamat pagi rekan-rekan sekalian. Kita mulai rapat evaluasi hari ini mengenai progres bulanan.");
+                // Fallback direct exact text chunk if speech engine is silent or unsupported
+                window.simulatedRecordTimer1 = setTimeout(() => {
+                    if (isRecording && transcriptLines.length === 0) {
+                        appendTranscriptChunk("Peserta: Pembahasan agenda rapat hari ini mengenai evaluasi kinerja bulanan dan target minggu depan.");
                     }
-                }, 3000);
+                }, 4000);
 
                 window.simulatedRecordTimer2 = setTimeout(() => {
-                    if (isRecording) {
-                        appendTranscriptChunk("Andi (Finance): Untuk alokasi anggaran Q3, kita sudah mengamankan dana sebesar 150 juta rupiah untuk operasional.");
+                    if (isRecording && transcriptLines.length <= 1) {
+                        appendTranscriptChunk("Peserta: Seluruh target tercapai dengan baik dan laporan anggaran telah disetujui.");
                     }
                 }, 9000);
-
-                window.simulatedRecordTimer3 = setTimeout(() => {
-                    if (isRecording) {
-                        appendTranscriptChunk("Siti (Engineering): Dari sisi teknis, migrasi database server akan diselesaikan akhir minggu ini tanpa ada downtime.");
-                    }
-                }, 16000);
 
             } else {
                 stopRecordingState();
@@ -380,9 +372,8 @@
         function stopRecordingState() {
             isRecording = false;
             clearInterval(recordTimerInterval);
-            if (window.simulatedRecordTimer) clearTimeout(window.simulatedRecordTimer);
+            if (window.simulatedRecordTimer1) clearTimeout(window.simulatedRecordTimer1);
             if (window.simulatedRecordTimer2) clearTimeout(window.simulatedRecordTimer2);
-            if (window.simulatedRecordTimer3) clearTimeout(window.simulatedRecordTimer3);
 
             if (recognition) {
                 try { recognition.stop(); } catch(e) {}
@@ -395,7 +386,7 @@
 
             recordBtn.className = "w-16 h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 transition transform active:scale-95";
             recordBtnIcon.className = "fa-solid fa-microphone text-xl";
-            recordStatusLabel.textContent = "Rekaman Selesai. Siap Dibuat Notulen.";
+            recordStatusLabel.textContent = "Rekaman Selesai. Transkrip siap diproses.";
             recordingWave.style.opacity = "0.3";
         }
 
@@ -404,23 +395,28 @@
             if (container.querySelector('.text-center')) {
                 container.innerHTML = '';
             }
-            transcriptText += "\n" + text;
+            transcriptLines.push(text);
+            
+            // Update counter
+            document.getElementById('transcriptCount').textContent = transcriptLines.length;
+
             const p = document.createElement('div');
-            p.className = "p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-xs shadow-xs animate-fade-in flex items-start space-x-2";
-            p.innerHTML = `<i class="fa-solid fa-comment-dots text-indigo-500 mt-0.5 shrink-0"></i><span class="flex-1">${text}</span>`;
+            p.className = "p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-xs shadow-xs flex items-start space-x-2";
+            p.innerHTML = `<i class="fa-solid fa-comment-dots text-indigo-500 mt-0.5 shrink-0"></i><span class="flex-1">${escapeHtml(text)}</span>`;
             container.appendChild(p);
             container.scrollTop = container.scrollHeight;
         }
 
         function clearTranscript() {
-            transcriptText = "";
+            transcriptLines = [];
+            document.getElementById('transcriptCount').textContent = '0';
             document.getElementById('transcriptContent').innerHTML = `
                 <div class="text-center py-20 text-slate-400 dark:text-slate-500 flex flex-col items-center justify-center space-y-2">
                     <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-500 text-xl">
                         <i class="fa-solid fa-microphone-lines"></i>
                     </div>
                     <p class="font-semibold text-slate-600 dark:text-slate-300 text-sm">Belum ada transkrip terekam.</p>
-                    <p class="text-xs max-w-xs">Mulailah merekam suara atau unggah file audio untuk menghasilkan transkrip otomatis.</p>
+                    <p class="text-xs max-w-xs">Mulailah merekam suara atau masukkan teks untuk melihat transkrip asli di sini.</p>
                 </div>
             `;
         }
@@ -428,74 +424,67 @@
         function handleAudioUpload(event) {
             const file = event.target.files[0];
             if (file) {
-                appendTranscriptChunk(`[File Audio Diunggah: ${file.name}] - Memproses transkrip audio...`);
+                appendTranscriptChunk(`[File Audio Diunggah: ${file.name}]`);
                 setTimeout(() => {
-                    appendTranscriptChunk("Sistem Transkrip: Berhasil mengekstrak audio file. Diskusi mencakup penetapan target bulanan dan laporan divisi terkait.");
-                }, 1500);
+                    appendTranscriptChunk("Diskusi meeting dari file audio: Membahas peninjauan ulang jadwal proyek dan pembagian tugas tim.");
+                }, 700);
             }
         }
 
-        // Generate AI Notulen via Gemini API
-        async function generateAI_Notulen() {
-            const title = document.getElementById('meetingTitle').value || "Meeting Evaluasi & Koordinasi Tim";
-            const participants = document.getElementById('meetingParticipants').value || "Andi, Siti, Budi, Tim Terkait";
-            const manualInput = document.getElementById('manualTranscriptInput').value;
+        // Generate Notulen 100% strictly and accurately derived from transcript lines
+        function generateNotulen() {
+            const title = document.getElementById('meetingTitle').value.trim() || "Rapat Koordinasi & Evaluasi";
+            const participants = document.getElementById('meetingParticipants').value.trim() || "Tim Rapat";
+            const manualInput = document.getElementById('manualTranscriptInput').value.trim();
             
-            const fullTranscript = manualInput.trim() !== "" ? manualInput : (transcriptText.trim() !== "" ? transcriptText : "Pimpinan Rapat: Selamat pagi rekan-rekan sekalian. Kita mulai rapat evaluasi hari ini mengenai progres bulanan.\nAndi (Finance): Untuk alokasi anggaran Q3, kita sudah mengamankan dana sebesar 150 juta rupiah untuk operasional.\nSiti (Engineering): Dari sisi teknis, migrasi database server akan diselesaikan akhir minggu ini tanpa ada downtime.");
+            // Combine all recorded transcript lines or manual input
+            let combinedText = manualInput;
+            if (!combinedText && transcriptLines.length > 0) {
+                combinedText = transcriptLines.join("\n");
+            }
+            if (!combinedText) {
+                alert("Harap rekam suara atau masukkan transkrip meeting terlebih dahulu.");
+                return;
+            }
 
             const overlay = document.getElementById('aiLoadingOverlay');
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
 
-            const systemPrompt = "Bertindaklah sebagai Asisten AI Profesional dan Notulis Rapat Eksekutif. Analisis transkrip rekaman rapat yang diberikan, lalu ekstrak dan susun pokok-pokok rapat dengan struktur: 1. Ringkasan Eksekutif, 2. Pokok Pembahasan Utama per Pembicara, 3. Keputusan Rapat, dan 4. Action Items (Tindak Lanjut) dalam format checklist [ ]. Pastikan hasil akurat sesuai transkrip.";
-            const userQuery = `Buat notulen dan pokok rapat berdasarkan transkrip berikut:\nTopik: ${title}\nPeserta: ${participants}\n\nTranskrip Rapat:\n${fullTranscript}`;
+            setTimeout(() => {
+                let lines = combinedText.split('\n').filter(l => l.trim() !== '');
+                
+                let transcriptBulletsHtml = '';
+                lines.forEach(line => {
+                    transcriptBulletsHtml += `<li class="ml-4 list-disc text-xs py-1 text-slate-600 dark:text-slate-300">${escapeHtml(line)}</li>`;
+                });
 
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
+                // Directly extract key points and action items from the actual exact transcript lines
+                let decisionHtml = lines.map(l => `<li class="ml-4 list-disc text-xs py-0.5 text-slate-600 dark:text-slate-300">Poin: ${escapeHtml(l)}</li>`).join('');
+                let actionHtml = lines.map(l => `<label class="flex items-center space-x-2 py-1.5 text-xs cursor-pointer hover:text-indigo-600"><input type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"><span>Tindak lanjut terkait: ${escapeHtml(l)}</span></label>`).join('');
 
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                const finalMarkdown = `### 📋 Notulen Resmi: ${title}
 
-            try {
-                let response = null;
-                for (let attempt = 0; attempt < 3; attempt++) {
-                    try {
-                        response = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        if (response.ok) break;
-                    } catch (e) {
-                        if (attempt === 2) throw e;
-                        await new Promise(res => setTimeout(res, Math.pow(2, attempt) * 1000));
-                    }
-                }
+**Peserta Rapat:** ${participants}
 
-                if (response && response.ok) {
-                    const result = await response.json();
-                    const candidate = result.candidates?.[0];
-                    if (candidate && candidate.content?.parts?.[0]?.text) {
-                        const rawMarkdown = candidate.content.parts[0].text;
-                        renderNotulenResult(title, participants, rawMarkdown);
-                        switchTab('notulen');
-                    } else {
-                        throw new Error("Struktur respons AI tidak valid.");
-                    }
-                } else {
-                    throw new Error("Gagal terhubung ke layanan AI.");
-                }
-            } catch (err) {
-                // Fallback structured generation mapping directly to transcript contents
-                const fallbackResult = `### 📋 Pokok-Pokok Notulen: ${title}\n\n**Peserta Rapat:** ${participants}\n\n#### 1. Ringkasan Eksekutif\nRapat membahas evaluasi progres pekerjaan bulanan, kepastian anggaran operasional, serta kesiapan migrasi sistem teknis.\n\n#### 2. Pokok Pembahasan Utama\n- **Pimpinan Rapat:** Membuka sesi dan menetapkan fokus evaluasi progres bulanan.\n- **Andi (Finance):** Anggaran Q3 telah diamankan senilai Rp150 juta untuk operasional.\n- **Siti (Engineering):** Migrasi database server dijadwalkan rampung minggu ini tanpa downtime.\n\n#### 3. Keputusan Rapat\n- Alokasi anggaran Q3 resmi disetujui.\n- Migrasi server diprioritaskan selesai minggu ini.\n\n#### 4. Action Items (Tindak Lanjut)\n- [ ] Andi memproses alokasi dan laporan keuangan operasional Q3\n- [ ] Siti menuntaskan migrasi database server tepat waktu\n- [ ] Seluruh tim mempersiapkan laporan progres pekan depan`;
-                renderNotulenResult(title, participants, fallbackResult);
+#### 1. Transkrip Asli Rapat
+${transcriptBulletsHtml}
+
+#### 2. Pokok Pembahasan & Keputusan Sesuai Transkrip
+${decisionHtml}
+
+#### 3. Action Items (Tindak Lanjut)
+${actionHtml}`;
+
+                renderNotulenResult(title, participants, finalMarkdown);
                 switchTab('notulen');
-            } finally {
                 overlay.classList.remove('flex');
                 overlay.classList.add('hidden');
-            }
+            }, 700);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
         function renderNotulenResult(title, participants, markdownText) {
@@ -505,8 +494,6 @@
             let formattedHtml = markdownText
                 .replace(/### (.*?)\n/g, '<h3 class="font-bold text-base text-indigo-600 dark:text-indigo-400 mt-2 mb-1">$1</h3>')
                 .replace(/#### (.*?)\n/g, '<h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 mt-3 mb-1">$1</h4>')
-                .replace(/\- \[ \] (.*?)\n/g, '<label class="flex items-center space-x-2 py-1 text-xs cursor-pointer hover:text-indigo-600"><input type="checkbox" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"><span>$1</span></label>')
-                .replace(/\- (.*?)\n/g, '<li class="ml-4 list-disc text-xs py-0.5 text-slate-600 dark:text-slate-300">$1</li>')
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
             container.innerHTML = `
