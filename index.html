@@ -470,22 +470,45 @@
             if (!isRecording) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                    
+                    // Determine best supported mime type for recording across browsers and mobile devices
+                    let mimeType = 'audio/webm';
+                    if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                        mimeType = 'audio/mp4';
+                    } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                        mimeType = 'audio/webm;codecs=opus';
+                    } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                        mimeType = 'audio/ogg;codecs=opus';
+                    }
+
+                    mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
                     audioChunks = [];
 
                     mediaRecorder.ondataavailable = (event) => {
-                        audioChunks.push(event.data);
+                        if (event.data && event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
                     };
 
                     mediaRecorder.onstop = () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        selectedFile = new File([audioBlob], "rekaman-suara-" + new Date().toISOString().slice(0,10) + ".webm", { type: 'audio/webm' });
+                        const audioBlob = new Blob(audioChunks, { type: mimeType });
+                        
+                        // Set appropriate file extension based on mimeType for Groq Whisper compatibility
+                        let ext = 'webm';
+                        if (mimeType.includes('mp4')) ext = 'm4a';
+                        else if (mimeType.includes('ogg')) ext = 'ogg';
+
+                        selectedFile = new File([audioBlob], "rekaman-suara-" + new Date().toISOString().slice(0,10).replace(/-/g,'') + "." + ext, { type: mimeType });
                         document.getElementById('file-name').textContent = selectedFile.name;
                         document.getElementById('file-info').classList.remove('hidden');
                         document.getElementById('transcribe-btn').disabled = false;
+                        document.getElementById('audio-duration').textContent = `Rekaman siap (${(selectedFile.size / (1024*1024)).toFixed(1)} MB)`;
+                        
+                        // Stop all microphone tracks to release hardware
+                        stream.getTracks().forEach(track => track.stop());
                     };
 
-                    mediaRecorder.start();
+                    mediaRecorder.start(250); // Collect data every 250ms
                     isRecording = true;
                     
                     const micVis = document.getElementById('mic-visualizer');
@@ -506,7 +529,9 @@
                     showCustomModal("Akses Mikrofon", "Akses mikrofon ditolak atau tidak didukung pada browser ini.", "error");
                 }
             } else {
-                mediaRecorder.stop();
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
                 isRecording = false;
                 
                 const micVis = document.getElementById('mic-visualizer');
